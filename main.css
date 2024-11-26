@@ -1,0 +1,6 @@
+.resizable {
+    resize: both;
+    overflow: auto;
+    border: 1px solid #000; /* Optional: Visual cue for resizing */
+    display: inline-block;  /* Ensure proper sizing */
+}
