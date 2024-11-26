@@ -56,7 +56,8 @@ const pause = () => {
 };
 
 const renderLoop = () => {
-    gameOfLife.tick();
+    // gameOfLife.tick();
+    gameOfLife.partick();
 
     drawGrid();
     drawCells();

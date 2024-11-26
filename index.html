@@ -6,11 +6,38 @@
     <title>Game of Life</title>
     <style>
         canvas { border: 1px solid black; }
+        .resizable {
+            resize: both;
+            overflow: auto;
+            border: 1px solid #000; /* Optional: Visual cue for resizing */
+            display: inline-block;  /* Ensure proper sizing */
+        }
     </style>
 </head>
-<body>
-    <canvas id="game-of-life-canvas" width="640" height="640"></canvas>
+
+<body>    
+    <div id="canvas-container" class="resizable">
+        <canvas id="game-of-life-canvas"></canvas>
+    </div>
+
     <button id="play-pause">Play</button>
-    <script type="module" src="index.js"></script>
+
+    <label for="alive-color-picker">Alive Cell Color:</label>
+    <input type="color" id="alive-color-picker" value="#FF0000">
+    <input type="range" onchange="updateAlpha(this.value, 'alive');" min="0" max="1" step="0.01" value="1">
+
+    <label for="dead-color-picker">Dead Cell Color:</label>
+    <input type="color" id="dead-color-picker" value="#000000">
+    <input type="range" onchange="updateAlpha(this.value, 'dead');" min="0" max="1" step="0.01" value="1">
+    
+    <label for="dead-color-picker">Grid/Cell Size:</label>
+    <input type="range" onchange="updateCellSize(this.value);" min="1" max="10" step="0.01" value="1">
+
+    <label for="grid-color-picker">Grid Color:</label>
+    <input type="color" id="grid-color-picker" value="#000000">
+    <input type="range" onchange="updateAlpha(this.value, 'grid');" min="0" max="1" step="0.01" value="1">
+
+    <script type="module" src="js/game.js"></script>
+    <!-- <script type="module" src="index2.js"></script> -->
 </body>
 </html>
