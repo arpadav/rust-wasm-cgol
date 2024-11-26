@@ -15,8 +15,6 @@ pub struct GameOfLife {
 #[wasm_bindgen]
 impl GameOfLife {
     pub fn new(w: usize, h: usize) -> GameOfLife {
-        #[cfg(feature = "web-sys")]
-        console::log_1(&"im making myself!".into());
         let mut cells: Vec<bool> = (0..w * h).map(|_| false).collect();
         cells
             .iter_mut()
@@ -24,7 +22,18 @@ impl GameOfLife {
         GameOfLife { cells: cells, width: w, height: h, size: w * h }
     }
 
-    pub fn render(&self) -> *const bool {
+    pub fn load(w: usize, h: usize, cells: js_sys::Uint8Array) -> GameOfLife {
+        let size = w * h;
+        let mut cells: Vec<bool> = cells.to_vec().iter().map(|x| *x != 0).collect();
+        match size.cmp(&cells.len()) {
+            std::cmp::Ordering::Less => cells.truncate(size),
+            std::cmp::Ordering::Greater => cells.resize(size, false),
+            std::cmp::Ordering::Equal => (),
+        }
+        GameOfLife { cells, size, width: w, height: h }
+    }
+
+    pub fn ptr(&self) -> *const bool {
         self.cells.as_ptr()
     }
 
@@ -52,7 +61,7 @@ impl GameOfLife {
     #[cfg(feature = "rayon")]
     pub fn tick(&mut self) {
         #[cfg(feature = "web-sys")]
-        console::log_1(&"ping!".into());
+        console::log_1(&"tick!".into());
         let mut next = self.cells.clone();
         next.par_iter_mut().enumerate().for_each(|(idx, next_cell)| {
             let x = idx % self.width;
