@@ -23,6 +23,9 @@
     <br>
     <button id="play-pause">Play</button>
     <button id="step">Step</button>
+    <button id="clear">Clear</button>
+    <label for="wrap">Wrap</label>
+    <input type="checkbox" id="wrap" checked>
 
     <br>
     <button id="export-button">Export</button>
@@ -31,13 +34,13 @@
 
     <br>
     <label for="alive-color-picker">Alive Cell Color:</label>
-    <input type="color" id="alive-color-picker" value="#FF0000">
+    <input type="color" id="alive-color-picker">
     <label for="alive-opacity">Alive Cell Opacity:</label>
     <input id="alive-opacity" type="range" onchange="updateAlpha(this.value, 'alive');" min="0" max="1" step="0.01" value="1">
 
     <br>
     <label for="dead-color-picker">Dead Cell Color:</label>
-    <input type="color" id="dead-color-picker" value="#000000">
+    <input type="color" id="dead-color-picker">
     <label for="dead-opacity">Dead Cell Opacity:</label>
     <input id="dead-opacity" type="range" onchange="updateAlpha(this.value, 'dead');" min="0" max="1" step="0.01" value="1">
     
@@ -45,12 +48,12 @@
     <label for="grid-enabled">Grid</label>
     <input type="checkbox" id="grid-enabled" checked>
     <label for="grid-color-picker">Grid Color:</label>
-    <input type="color" id="grid-color-picker" value="#000000">
+    <input type="color" id="grid-color-picker">
 
     <br>
     <label for="cell-size">Cell Size:</label>
-    <input id="cell-size" type="range" onchange="updateCellSize(this.value);" min="2" max="10" step="0.01" value="3">
+    <input id="cell-size" type="range" onchange="updateCellSize(this.value);" min="3" max="15" step="0.01">
 
-    <script type="module" src="game.js"></script>
+    <script type="module" src="js/game.js"></script>
 </body>
 </html>
