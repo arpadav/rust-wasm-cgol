@@ -1,5 +1,5 @@
 #!/bin/bash
 cd wasm-cgol
-wasm-pack build --target web
+RUSTFLAGS="-Zlocation-detail=none" wasm-pack build --target web --release --features "rayon"
 cd ..
-python -m http.server
+python3 -m http.server 9003

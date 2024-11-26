@@ -6,11 +6,54 @@
     <title>Game of Life</title>
     <style>
         canvas { border: 1px solid black; }
+        .resizable {
+            resize: both;
+            overflow: auto;
+            border: 1px solid #000000; /* Optional: Visual cue for resizing */
+            display: inline-block;  /* Ensure proper sizing */
+        }
     </style>
 </head>
-<body>
-    <canvas id="game-of-life-canvas" width="640" height="640"></canvas>
+
+<body>    
+    <div id="canvas-container" class="resizable">
+        <canvas id="game-of-life-canvas" class="resizable"></canvas>
+    </div>
+
+    <br>
     <button id="play-pause">Play</button>
-    <script type="module" src="index.js"></script>
+    <button id="step">Step</button>
+    <button id="clear">Clear</button>
+    <label for="wrap">Wrap</label>
+    <input type="checkbox" id="wrap" checked>
+
+    <br>
+    <button id="export-button">Export</button>
+    <label for="import-button">Import</label>
+    <input id="import-button" type="file" accept=".bin">
+
+    <br>
+    <label for="alive-color-picker">Alive Cell Color:</label>
+    <input type="color" id="alive-color-picker">
+    <label for="alive-opacity">Alive Cell Opacity:</label>
+    <input id="alive-opacity" type="range" onchange="updateAlpha(this.value, 'alive');" min="0" max="1" step="0.01" value="1">
+
+    <br>
+    <label for="dead-color-picker">Dead Cell Color:</label>
+    <input type="color" id="dead-color-picker">
+    <label for="dead-opacity">Dead Cell Opacity:</label>
+    <input id="dead-opacity" type="range" onchange="updateAlpha(this.value, 'dead');" min="0" max="1" step="0.01" value="1">
+    
+    <br>
+    <label for="grid-enabled">Grid</label>
+    <input type="checkbox" id="grid-enabled" checked>
+    <label for="grid-color-picker">Grid Color:</label>
+    <input type="color" id="grid-color-picker">
+
+    <br>
+    <label for="cell-size">Cell Size:</label>
+    <input id="cell-size" type="range" onchange="updateCellSize(this.value);" min="3" max="15" step="0.01">
+
+    <script type="module" src="js/game.js"></script>
 </body>
 </html>
