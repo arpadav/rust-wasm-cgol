@@ -1,6 +1,10 @@
 /// WASM Imports
-import init, { GameOfLife, get_memory } from './wasm-cgol/pkg/wasm_cgol.js';
+import init, { GameOfLife, get_memory } from '../wasm-cgol/pkg/wasm_cgol.js';
+/// JS Imports
+import { fmtLengthV0, serializeAttributesV0, deserializeAttributesV0 } from './attrs/v0.js';
 
+/// Latest .bin version
+const LATEST_VERSION = 0;
 /// Game-of-life object
 let Gol = null;
 /// Game-of-life buffer of cell data (vector of bools)
@@ -12,14 +16,14 @@ let DeadColor = [0, 0, 0, 1].map((x) => x * 255);
 /// Color of the grid
 let GridColor = [0, 0, 0, 1].map((x) => x * 255);
 /// Cell size, in pixels
-let CellSize = 3;
+let CellSize = 5;
 /// Canvas width
-let Width = 360;
+let Width = 125;
 let pxWidth = Width * CellSize;
 let magicWidthOffset = 0;
 let initialResizeCanvasWidth = null;
 /// Canvas height
-let Height = 360;
+let Height = 125;
 let pxHeight = Height * CellSize;
 let magicHeightOffset = 0;
 let initialResizeCanvasHeight = null;
@@ -95,6 +99,24 @@ playPauseButton.addEventListener("click", event => {
 /// Step listener
 const stepButton = document.getElementById("step");
 stepButton.addEventListener("click", _ => { step(); });
+/// Clear listener
+const clearButton = document.getElementById("clear");
+clearButton.addEventListener("click", _ => {
+    if (Gol != null) {
+        Gol.clear();
+        drawCells();
+    }
+    if (!isPaused()) {
+        pause();
+        playPauseButton.textContent = "Play";
+        stepButton.disabled = false;
+    }
+});
+/// Wrap listener
+const wrapCheckbox = document.getElementById("wrap");
+wrapCheckbox.addEventListener("change", _ => {
+    Gol.wrap(wrapCheckbox.checked);
+});
 
 /// Export listener
 const exportButton = document.getElementById("export-button");
@@ -107,9 +129,10 @@ exportButton.addEventListener("click", _ => {
         aliveColor: AliveColor,
         deadColor: DeadColor,
         gridColor: GridColor,
-        gridEnabled: gridEnabled
+        gridEnabled: gridEnabled,
+        wrappingEnabled: wrapCheckbox.checked,
     };
-    const attrBuffer = serializeAttributes(additionalAttributes);
+    const attrBuffer = serializeAttributes(LATEST_VERSION, additionalAttributes);
     const combinedBuffer = new Uint8Array(attrBuffer.byteLength + cells.byteLength);
     combinedBuffer.set(new Uint8Array(attrBuffer), 0);
     combinedBuffer.set(cells, attrBuffer.byteLength);
@@ -132,17 +155,20 @@ importInput.addEventListener("change", async event => {
     reader.onload = async function(e) {
         const arrayBuffer = e.target.result;
         const totalData = new Uint8Array(arrayBuffer);
-        const attrSize = 4 * 16; // length of `attrArray` in `serializeAttributes`
-        const cellsData = totalData.slice(attrSize);
-        const attributes = totalData.slice(0, attrSize).buffer;
-        const dattrs = deserializeAttributes(attributes);
+        const versionBuffer = totalData.slice(0, 4).buffer;
+        const versionView = new DataView(versionBuffer);
+        const version = versionView.getUint32(0, true)
+        const attrSize = fmtLength(version);
+        const attributes = totalData.slice(4, attrSize + 4).buffer;
+        const cellsData = totalData.slice(attrSize + 4);
+        const dattrs = deserializeAttributes(version, attributes);
         await new Promise(resolve => {
             requestAnimationFrame(() => {
-                setAttributes(dattrs);
+                setAttributes(version, dattrs);
                 updateCanvasSize();
                 canvasContainer.style.width = `${dattrs.cellSize * dattrs.width + 10}px`;
                 canvasContainer.style.height = `${dattrs.cellSize * dattrs.height + 10}px`;
-                Gol = GameOfLife.load(Width, Height, cellsData);
+                Gol = GameOfLife.load(Width, Height, cellsData, wrapCheckbox.checked);
                 GolBuffer = get_memory().buffer;
                 requestAnimationFrame(() => {
                     getGrid();
@@ -234,7 +260,7 @@ async function load() {
  * filling the grid randomly and rendering result onto the screen.
  */
 function newGame() {
-    Gol = GameOfLife.new(Width, Height);
+    Gol = GameOfLife.new(Width, Height, wrapCheckbox.checked);
     GolBuffer = get_memory().buffer;
     getGrid();
     getCells();
@@ -502,98 +528,6 @@ function rgba2hex(rgba) {
 }
 
 /**
- * Serializes the given object of attributes into a binary format.
- *
- * The binary format is as follows:
- *   - The first 4 bytes represent the width of the game board.
- *   - The second 4 bytes represent the height of the game board.
- *   - The third 4 bytes represent the cell size.
- *   - The fourth 4 bytes represent the grid enabled flag.
- *   - The fifth, sixth, seventh, and eighth 4 bytes represent the red, green,
- *     blue, and alpha components of the alive cell color, respectively.
- *   - The ninth, tenth, eleventh, and twelfth 4 bytes represent the red,
- *     green, blue, and alpha components of the dead cell color, respectively.
- *   - The thirteenth, fourteenth, and fifteenth 4 bytes represent the red,
- *     green, and blue components of the grid color, respectively.
- *
- * @param {Object} attrs - Object containing the attributes to serialize.
- *     Must have the following properties:
- *       - width: {number} Width of the game board.
- *       - height: {number} Height of the game board.
- *       - cellSize: {number} Size of each cell in the game board.
- *       - gridEnabled: {boolean} Whether the grid is enabled.
- *       - aliveColor: {number[]} RGBA color of alive cells.
- *       - deadColor: {number[]} RGBA color of dead cells.
- *       - gridColor: {number[]} RGB color of the grid.
- * @returns {ArrayBuffer} Serialized binary representation of the attributes.
- */
-function serializeAttributes(attrs) {
-    const attrArray = [
-        attrs.width,
-        attrs.height,
-        attrs.cellSize,
-        attrs.gridEnabled,
-        attrs.aliveColor[0],
-        attrs.aliveColor[1],
-        attrs.aliveColor[2],
-        attrs.aliveColor[3],
-        attrs.deadColor[0],
-        attrs.deadColor[1],
-        attrs.deadColor[2],
-        attrs.deadColor[3],
-        attrs.gridColor[0],
-        attrs.gridColor[1],
-        attrs.gridColor[2],
-        attrs.gridColor[3],
-    ];
-    const buffer = new ArrayBuffer(attrArray.length * 4);
-    const view = new DataView(buffer);
-    attrArray.forEach((attr, index) => {
-        view.setUint32(index * 4, attr, true);
-    });
-    return buffer;
-}
-
-/**
- * Deserializes the given binary representation of attributes into an object.
- *
- * The binary format is as follows:
- *   - The first 4 bytes represent the width of the game board.
- *   - The second 4 bytes represent the height of the game board.
- *   - The third 4 bytes represent the cell size.
- *   - The fourth 4 bytes represent the grid enabled flag.
- *   - The fifth, sixth, seventh, and eighth 4 bytes represent the red, green,
- *     blue, and alpha components of the alive cell color, respectively.
- *   - The ninth, tenth, eleventh, and twelfth 4 bytes represent the red,
- *     green, blue, and alpha components of the dead cell color, respectively.
- *   - The thirteenth, fourteenth, and fifteenth 4 bytes represent the red,
- *     green, and blue components of the grid color, respectively.
- *
- * @param {ArrayBuffer} buffer - Binary representation of the attributes.
- * @returns {Object} Deserialized object with the following properties:
- *     - width: {number} Width of the game board.
- *     - height: {number} Height of the game board.
- *     - cellSize: {number} Size of each cell in the game board.
- *     - gridEnabled: {boolean} Whether the grid is enabled.
- *     - aliveColor: {number[]} RGBA color of alive cells.
- *     - deadColor: {number[]} RGBA color of dead cells.
- *     - gridColor: {number[]} RGB color of the grid.
- */
-function deserializeAttributes(buffer) {
-    const view = new DataView(buffer);
-    const attributes = {
-        width: view.getUint32(0, true),
-        height: view.getUint32(4, true),
-        cellSize: view.getUint32(8, true),
-        gridEnabled: view.getUint32(12, true),
-        aliveColor: [view.getUint32(16, true), view.getUint32(20, true), view.getUint32(24, true), view.getUint32(28, true)],
-        deadColor: [view.getUint32(32, true), view.getUint32(36, true), view.getUint32(40, true), view.getUint32(44, true)],
-        gridColor: [view.getUint32(48, true), view.getUint32(52, true), view.getUint32(56, true), view.getUint32(60, true)],
-    };
-    return attributes;
-}
-
-/**
  * Sets the attributes of the game based on the given object.
  *
  * @param {Object} attrs - Object with the following properties:
@@ -604,8 +538,9 @@ function deserializeAttributes(buffer) {
  *     - aliveColor: {number[]} RGBA color of alive cells.
  *     - deadColor: {number[]} RGBA color of dead cells.
  *     - gridColor: {number[]} RGB color of the grid.
+ *     - wrappingEnabled: {boolean} Whether the map is wrapped.
  */
-function setAttributes(attrs) {
+function setAttributesV0(attrs) {
     Width = attrs.width;
     Height = attrs.height;
     CellSize = attrs.cellSize;
@@ -622,6 +557,31 @@ function setAttributes(attrs) {
     deadOpacity.value = DeadColor[3] / 255;
     GridColor = attrs.gridColor;
     gridColorPicker.value = rgba2hex(GridColor);
+    wrapCheckbox.checked = attrs.wrappingEnabled;
+}
+
+function setAttributes(version, attrs) {
+    switch (version) {
+        case 0: return setAttributesV0(attrs)
+    }
+}
+
+function fmtLength(version) {
+    switch (version) {
+        case 0: return fmtLengthV0()
+    }
+}
+
+function serializeAttributes(version, attrs) {
+    switch (version) {
+        case 0: return serializeAttributesV0(attrs)
+    }
+}
+
+function deserializeAttributes(version, attrs) {
+    switch (version) {
+        case 0: return deserializeAttributesV0(attrs)
+    }
 }
 
 /**
