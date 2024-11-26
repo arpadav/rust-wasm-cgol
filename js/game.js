@@ -1,7 +1,7 @@
 /// WASM Imports
 import init, { GameOfLife, get_memory } from '../wasm-cgol/pkg/wasm_cgol.js';
-/// JS Imports
-import { fmtLengthV0, serializeAttributesV0, deserializeAttributesV0 } from './attrs/v0.js';
+/// JS Imports for binary attributes
+import { fmtLengthV0, serializeAttributesV0, deserializeAttributesV0 } from './binattrs/v0.js';
 
 /// Latest .bin version
 const LATEST_VERSION = 0;
@@ -58,6 +58,7 @@ aliveColorPicker.addEventListener('input', (event) => {
     setRgb(AliveColor, hex2rgb(event.target.value));
     drawCells();
 })
+
 /// Dead-color listener
 const deadOpacity = document.getElementById('dead-opacity');
 const deadColorPicker = document.getElementById('dead-color-picker');
@@ -66,6 +67,7 @@ deadColorPicker.addEventListener('input', (event) => {
     setRgb(DeadColor, hex2rgb(event.target.value));
     drawCells();
 })
+
 /// Grid-color listener
 const gridColorPicker = document.getElementById('grid-color-picker');
 gridColorPicker.value = rgba2hex(GridColor);
@@ -73,6 +75,7 @@ gridColorPicker.addEventListener('input', (event) => {
     setRgb(GridColor, hex2rgb(event.target.value));
     if (gridEnabled) drawGrid();
 })
+
 /// Grid enabled listener
 const gridEnabledCheckbox = document.getElementById('grid-enabled');
 gridEnabledCheckbox.checked = gridEnabled;
@@ -80,8 +83,15 @@ gridEnabledCheckbox.addEventListener('change', (event) => {
     gridEnabled = event.target.checked;
     render();
 })
+
 /// Cell-size listener
 const cellSizeSlider = document.getElementById('cell-size');
+
+/// Wrap listener
+const wrapCheckbox = document.getElementById("wrap");
+wrapCheckbox.addEventListener("change", _ => {
+    Gol.wrap(wrapCheckbox.checked);
+});
 
 /// Play-pause listener
 const playPauseButton = document.getElementById("play-pause");
@@ -96,9 +106,11 @@ playPauseButton.addEventListener("click", event => {
         stepButton.disabled = false;
     }
 });
+
 /// Step listener
 const stepButton = document.getElementById("step");
 stepButton.addEventListener("click", _ => { step(); });
+
 /// Clear listener
 const clearButton = document.getElementById("clear");
 clearButton.addEventListener("click", _ => {
@@ -111,11 +123,6 @@ clearButton.addEventListener("click", _ => {
         playPauseButton.textContent = "Play";
         stepButton.disabled = false;
     }
-});
-/// Wrap listener
-const wrapCheckbox = document.getElementById("wrap");
-wrapCheckbox.addEventListener("change", _ => {
-    Gol.wrap(wrapCheckbox.checked);
 });
 
 /// Export listener
@@ -194,10 +201,12 @@ canvas.addEventListener("mousedown", event => {
     Gol.toggle_cell(row, col);
     drawCells();
 });
+
 /// Mouse-up event handler
 canvas.addEventListener("mouseup", _ => {
     isDrawing = false;
 });
+
 /// Mouse-move event handler
 canvas.addEventListener("mousemove", event => {
     if (isDrawing) {
@@ -208,6 +217,7 @@ canvas.addEventListener("mousemove", event => {
 });
 /// Touch-start event handler
 canvas.addEventListener("touchstart", event => event.preventDefault());
+
 /// Touch-move event handler
 canvas.addEventListener("touchmove", event => event.preventDefault());
 
@@ -268,8 +278,7 @@ function newGame() {
 }
 
 /**
- * Renders the Game of Life cells to the `cellCanvas` using the given `Gol` WASM
- * instance.
+ * Renders the Game of Life frame to the `cellCanvas`.
  */
 const getCells = () => {
     if (GolBuffer.byteLength === 0) GolBuffer = get_memory().buffer
@@ -312,7 +321,7 @@ const getGrid = () => {
 };
 
 /**
- * Updates the Game of Life cells and redraws the canvas.
+ * Redraws the cells.
  */
 const drawCells = () => {
     getCells();
@@ -328,8 +337,8 @@ const drawGrid = () => {
 }
 
 /**
- * Redraws the canvas by clearing the canvas, pasting the `cellCanvas`, and
- * if `gridEnabled`, pasting the `gridCanvas`.
+ * Clears the canvas, renders the `cellCanvas`, and
+ * if `gridEnabled`, renders the `gridCanvas`.
  */
 const render = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -368,10 +377,7 @@ const pause = () => {
 };
 
 /**
- * Continuously updates the game state and redraws the canvas.
- * 
- * This function calls `Gol.tick()` to progress the game state by one tick,
- * and `render()` to render the current state. It then requests the next
+ * Updates the game state and redraws the canvas; it requests the next
  * animation frame to keep the loop running, storing its ID in `animationId`.
  */
 const renderLoop = () => {
@@ -437,7 +443,7 @@ function updateAlpha(alpha, which) {
 }
 
 /**
- * Updates the cell size, and each canvas dim.
+ * Updates the cell size, and each canvas dim. **This will also reset the game.**
  *
  * @param {number} size - New size of each cell. Must be a positive integer.
  */
@@ -464,7 +470,8 @@ function updateCanvasSize() {
  * Copies the first 3 elements of `rgb` into `rgba`.
  *
  * @param {number[]} rgba - Array to modify. Must have length 4.
- * @param {number[]} rgb - Array to copy from. Must have length 3.
+ * @param {{r: number, g: number, b: number}} rgb - Object with 
+ *      properties r, g, and b. This is made from `hex2rgba`.
  */
 function setRgb(rgba, rgb) {
     rgba[0] = rgb.r;
@@ -529,6 +536,8 @@ function rgba2hex(rgba) {
 
 /**
  * Sets the attributes of the game based on the given object.
+ * 
+ * This is for V0 of the binary format.
  *
  * @param {Object} attrs - Object with the following properties:
  *     - width: {number} Width of the game board.
@@ -560,24 +569,54 @@ function setAttributesV0(attrs) {
     wrapCheckbox.checked = attrs.wrappingEnabled;
 }
 
+/**
+ * Sets the attributes of the game based on the given object and binary format
+ * version.
+ * 
+ * @param {number} version - Version of the binary format.
+ * @param {Object} attrs - Object with varying properties depending on the
+ *     version.
+ */
 function setAttributes(version, attrs) {
     switch (version) {
         case 0: return setAttributesV0(attrs)
     }
 }
 
+/**
+ * Returns the length of the binary format for the given version.
+ * 
+ * @param {number} version - Version of the binary format.
+ * @returns {number} Length of the binary format.
+ */
 function fmtLength(version) {
     switch (version) {
         case 0: return fmtLengthV0()
     }
 }
 
+/**
+ * Serializes the given object of attributes into a binary format.
+ * 
+ * @param {number} version - Version of the binary format.
+ * @param {Object} attrs - Object with varying properties depending on the
+ *     version.
+ * @returns {ArrayBuffer} Serialized binary representation of the attributes.
+ */
 function serializeAttributes(version, attrs) {
     switch (version) {
         case 0: return serializeAttributesV0(attrs)
     }
 }
 
+/**
+ * Deserializes the given binary format into an object of attributes.
+ * 
+ * @param {number} version - Version of the binary format.
+ * @param {ArrayBuffer} attrs - Serialized binary representation of the
+ *     attributes.
+ * @returns {Object} Object with varying properties depending on the version.
+ */
 function deserializeAttributes(version, attrs) {
     switch (version) {
         case 0: return deserializeAttributesV0(attrs)
