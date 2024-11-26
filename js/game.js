@@ -10,11 +10,11 @@ let Gol = null;
 /// Game-of-life buffer of cell data (vector of bools)
 let GolBuffer = null;
 /// Color of alive cells
-let AliveColor = [1, 1, 0, 1].map((x) => x * 255);
+let AliveColor = [0, 0, 0.564706, 1].map((x) => Math.round(x * 255));
 /// Color of dead cells
-let DeadColor = [0, 0, 0, 1].map((x) => x * 255);
+let DeadColor = [0.59608, 0.04314, 0.04314, 0.25].map((x) => Math.round(x * 255));
 /// Color of the grid
-let GridColor = [0, 0, 0, 1].map((x) => x * 255);
+let GridColor = [0.5098, 0.5098, 0.5098, 1].map((x) => Math.round(x * 255));
 /// Cell size, in pixels
 let CellSize = 5;
 /// Canvas width
@@ -52,6 +52,7 @@ const gridCtx = gridCanvas.getContext('2d');
 
 /// Alive-color listener
 const aliveOpacity = document.getElementById('alive-opacity');
+aliveOpacity.value = AliveColor[3] / 255;
 const aliveColorPicker = document.getElementById('alive-color-picker');
 aliveColorPicker.value = rgba2hex(AliveColor);
 aliveColorPicker.addEventListener('input', (event) => {
@@ -61,6 +62,7 @@ aliveColorPicker.addEventListener('input', (event) => {
 
 /// Dead-color listener
 const deadOpacity = document.getElementById('dead-opacity');
+deadOpacity.value = DeadColor[3] / 255;
 const deadColorPicker = document.getElementById('dead-color-picker');
 deadColorPicker.value = rgba2hex(DeadColor);
 deadColorPicker.addEventListener('input', (event) => {
@@ -86,6 +88,7 @@ gridEnabledCheckbox.addEventListener('change', (event) => {
 
 /// Cell-size listener
 const cellSizeSlider = document.getElementById('cell-size');
+cellSizeSlider.value = CellSize;
 
 /// Wrap listener
 const wrapCheckbox = document.getElementById("wrap");
